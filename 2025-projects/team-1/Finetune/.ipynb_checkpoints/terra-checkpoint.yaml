@@ -1,0 +1,67 @@
+MODEL:
+  NAME: phasepredict16        # Must match @ModelFactory.model("phasepredict16")
+  TYPE: swinv2                # Custom, but optional if handled in your model factory
+  IN_CHANS: 16
+  PRETRAINED: /umbc/rs/nasa-access/users/xingyan/pytorch-caney/satvision-toa-giant-patch8-window8-128/mp_rank_00_model_states.pt
+  PREPROCESSOR: mlp
+      HIDDEN_LAYER_SIZE: 32
+  
+  ENCODER:
+    NAME: satvision           # Must match @ModelFactory.encoder("satvision")
+    IN_CHANNELS: 14
+    DROP_PATH_RATE: 0.1
+    PRETRAINED: /umbc/rs/nasa-access/users/xingyan/pytorch-caney/satvision-toa-giant-patch8-window8-128/mp_rank_00_model_states.pt
+    FREEZE_DEPTH:
+    SWINV2:
+      IN_CHANS: 14
+      PATCH_SIZE: 4
+      EMBED_DIM: 512
+      DEPTHS: [2, 2, 42, 2]
+      NUM_HEADS: [16, 32, 64, 128]
+      WINDOW_SIZE: 8
+      NORM_PERIOD: 6
+      PRETRAINED_WINDOW_SIZES: [0, 0, 0, 0]
+      MLP_RATIO: 4.
+      QKV_BIAS: TRUE
+      DROP_RATE: 0.
+      DROP_PATH_RATE: 0.1
+      APE: FALSE
+      PATCH_NORM: nn.LayerNorm
+  NUM_CLASSES: 5              
+
+DATA:
+  NAME: cloudphase            # Must match @DataModuleFactory.register("cloudphase")
+  DIR: /umbc/rs/nasa-access/users/xingyan/pytorch-caney/data/downstream_2dcloud
+  IMG_SIZE: 128
+  NUM_WORKERS: 4
+
+LOSS:
+  NAME: ce
+
+OPTIMIZER:
+  NAME: adamw                # Suggested optimizer for Swin
+  LR: 3e-4
+  WEIGHT_DECAY: 0.05
+
+SCHEDULER:
+  NAME: multistep
+  GAMMA: 0.1
+  MULTISTEPS: [700]
+
+TRAIN:
+  BATCH_SIZE: 256
+  EPOCHS: 10
+  ACCELERATOR: gpu
+  STRATEGY: auto             # or ddp/fsdp if needed
+  USE_CHECKPOINT: true
+  WARMUP_EPOCHS: 2
+  WARMUP_LR: 1e-4
+  MIN_LR: 2e-4
+
+PRECISION: bf16
+
+PRINT_FREQ: 10
+SAVE_FREQ: 1
+VALIDATION_FREQ: 10
+TAG: mlp32_freezeupto3
+

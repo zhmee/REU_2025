@@ -1,0 +1,10 @@
+# slurm files 
+*.slurm
+
+#Env
+envs/
+
+#Other (Output, etc.)
+*.out
+*.err
+tmp/

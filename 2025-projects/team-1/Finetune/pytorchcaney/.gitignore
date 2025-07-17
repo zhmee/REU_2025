@@ -1,0 +1,25 @@
+# ── slurm things ───────────────────
+*.out
+*.err
+
+# ── data ───────────────────────────
+*.pt
+*.pth
+*.h5
+*.np[zy]
+*.tif
+data/
+logs/
+env_local.sh
+
+# ── cache ─────────────────────────
+__pycache__/
+
+
+.jupyter_ystore.db
+
+# --- shortcuts
+cloud_mask_pipeline.py
+multitask_pipeline.py
+phase_pred_pipeline.py
+regression_pipeline.py

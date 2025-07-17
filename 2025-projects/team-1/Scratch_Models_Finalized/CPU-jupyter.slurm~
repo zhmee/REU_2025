@@ -1,0 +1,67 @@
+#!/bin/bash
+
+#SBATCH --job-name=Notebook
+#SBATCH --output=jupyter-log-%J.txt
+#SBATCH --error=jupyter-log-%J.err
+#SBATCH --account=cybertrn
+#SBATCH --cluster=chip-cpu
+#SBATCH --partition=2024
+#SBATCH --qos=shared
+#SBATCH --time=08:00:00
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=2
+#SBATCH --tasks-per-node=2
+#SBATCH --mem=50G
+
+# Load conda module
+module load Anaconda3/2024.02-1
+
+# Set runtime vars
+XDG_RUNTIME_DIR=""
+export CONDA_ENVS_PATH=/umbc/rs/cybertrn/reu2025/team1/research/Scratch_Models_Finalized/envs
+export TMPDIR=/umbc/rs/cybertrn/reu2025/team1/research/Scratch_Models_Finalized/tmp
+mkdir -p "$TMPDIR"
+
+# Prevent Conda/pip from using home dir
+export CONDA_PKGS_DIRS="$TMPDIR/conda_pkgs"
+export CONDA_PKGS_DIR="$TMPDIR/conda_pkgs"
+export PIP_CACHE_DIR="$TMPDIR/pip_cache"
+export JUPYTER_RUNTIME_DIR="$TMPDIR/jupyter_runtime"
+export JUPYTER_DATA_DIR="$TMPDIR/jupyter_data"
+
+# Create env path vars
+envName="jupyter_env"
+fullEnvPath="$CONDA_ENVS_PATH/$envName"
+
+# Get tunneling info
+ipnport=$(shuf -i8000-9999 -n1)
+ipnip=$(hostname -i)
+
+# Create conda env if it doesn't exist
+if [ ! -d "$fullEnvPath" ]; then
+    conda create -y -p "$fullEnvPath" python=3.12
+fi
+
+# Activate conda env
+eval "$(conda shell.bash hook)"
+conda activate "$fullEnvPath"
+
+# Install dependencies
+python -m pip install --upgrade pip
+python -m pip install jupyterlab jupyter_collaboration
+
+# Print SSH tunnel instructions
+echo -e "
+Copy/Paste this in your local terminal to SSH tunnel with remote
+-----------------------------------------------------------------
+ssh -N -L $ipnport:$ipnip:$ipnport $USER@chip.rs.umbc.edu
+-----------------------------------------------------------------
+Then go to the .err file associated with this SLURM job and copy the
+line starting with \"http://127.0.0.1\" into your browser.
+
+To find it easily, try:
+    cat jupyter-log-${SLURM_JOB_ID}.err | grep 127.0.0.1
+"
+
+# Start JupyterLab
+jupyter-lab --no-browser --port=$ipnport --ip=$ipnip --collaborative
