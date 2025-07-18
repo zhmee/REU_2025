@@ -1,7 +1,10 @@
 # REU 2025 Pytorch Caney Fine-Tuning Documentation!
 
 Authors : Danielle Murphy, Kevin Zhang, Caleb Parten, Autumn Sterling, Haoxiang Zhang
-*Include original authors as well ?*
+
+Mentors: Jianwu Wang, RA: Xingyan Li
+In collaboration with Jie Gong, Jordan A. Caraballo-Vega, Mark L. Carroll
+
 
 # Satvision-toa : Fine-Tuning with pytorch-caney
 Python package which utilizes Nasa pytorch-caney package to fine tune Satvision-toa model
