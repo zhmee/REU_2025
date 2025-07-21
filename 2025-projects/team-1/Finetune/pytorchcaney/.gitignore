@@ -23,3 +23,10 @@ cloud_mask_pipeline.py
 multitask_pipeline.py
 phase_pred_pipeline.py
 regression_pipeline.py
+
+# ----- Archive -----
+old/
+**/old
+
+# other ----
+slurm_logs/

@@ -3,3 +3,21 @@ __*
 
 __pycache__/
 
+<<<<<<< HEAD
+=======
+# checkpoints 
+**/.ipynb_checkpoints/
+**/checkpoints/
+**/*.ckpt
+**/Logs/
+**/*.pt
+**/*.png
+
+# please
+2025-projects/team-1/Finetune/pytorchcaney/old/ 
+**/jupyter-log-*.txt
+2025-projects/team-1/Scratch_Models_Finalized/MultiTask/.ipynb_checkpoints/
+# images
+**/*.nc
+
+>>>>>>> 0ae577f (Further housekeeping)

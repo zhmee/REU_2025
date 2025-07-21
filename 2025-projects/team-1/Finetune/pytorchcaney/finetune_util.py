@@ -23,7 +23,7 @@ class CloudDataset(Dataset):
             self.label_key = "l2_cod"
         elif task.lower() == "cps":
             self.label_key = "l2_cps"
-        elif task.lower() == "multitask":
+        elif task.lower() == "multitask" or task.lower() == "multitask2":
             self.label_key = "multitask"
         else:
             raise ValueError(f"Task {task} not supported for CloudDataset. Try phasepred, cloudmask, cod, cps, or multitask.")
@@ -31,7 +31,8 @@ class CloudDataset(Dataset):
         
         if self.in_chans == 14:
             # Drop ABI bands 8 and 13
-            self.band_indices = [i for i in range(16) if i not in (7,12)]
+            self.band_indices = [1,2,0,4,5,6,3,8,9,10,11,13,14,15]
+            #self.band_indices = [i for i in range(16) if i not in (7,12)]
         elif self.in_chans == 16:
             self.band_indices = list(range(16))
         else:

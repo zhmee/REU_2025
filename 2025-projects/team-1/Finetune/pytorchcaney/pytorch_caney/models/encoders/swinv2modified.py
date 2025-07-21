@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
 
-from timm.models.layers import DropPath, to_2tuple, trunc_normal_
+from timm.layers import DropPath, to_2tuple, trunc_normal_
 
 import numpy as np
 
@@ -835,11 +835,21 @@ class SwinTransformerV2(nn.Module):
         x = self.pos_drop(x)
         feature = []
 
-        for layer in self.layers:
+        # Danielle: Added this code 7/18, trying to give unet decoder access to earlier features? 
+        # Forward method of swinv2 is still unchanged (returns the very last output) so I don't think this will mess anything up.
+        B, N, C = x.shape
+        H = W = int(N ** 0.5)
+        feat0 = x.view(B, H, W, C).permute(0, 3, 1, 2).contiguous()  # [B, C, 32, 32]
+        feature.append(feat0)
+
+
+        for i, layer in enumerate(self.layers):
             x = layer(x)
             bs, n, f = x.shape
             h = int(n**0.5)
-
+            out =  x.view(-1, h, h, f).permute(0, 3, 1, 2).contiguous()
+            #print(f"Stage {i} output: {out.shape}")
+            
             feature.append(
                 x.view(-1, h, h, f).permute(0, 3, 1, 2).contiguous())
         return feature

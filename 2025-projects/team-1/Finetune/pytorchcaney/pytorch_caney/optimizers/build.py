@@ -67,11 +67,11 @@ def build_optimizer(config, model, is_pretrain=False, logger=None):
     optimizer_to_use = get_optimizer_from_dict(optimizer_name, config)
 
     if hasattr(model, 'no_weight_decay'):
-        print(f'{model} has no_weight_decay')
+        #print(f'{model} has no_weight_decay')
         skip = model.no_weight_decay()
 
     if hasattr(model, 'no_weight_decay_keywords'):
-        print(f'{model} has no weight decay keywords')
+        #print(f'{model} has no weight decay keywords')
         skip_keywords = model.no_weight_decay_keywords()
 
     if is_pretrain:

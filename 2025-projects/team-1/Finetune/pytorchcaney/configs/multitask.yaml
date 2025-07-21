@@ -1,9 +1,9 @@
-PIPELINE: 'multitask'
+PIPELINE: 'multitask2'
 DATAMODULE: null
 MODEL:
   PREPROCESSOR:
     NAME: 'conv' # acceptable is mlp or conv
-    HIDDEN_DIMS: [32]
+    HIDDEN_DIMS: [16,16]
     CONV_KERNEL_SIZE: 3
   ENCODER: 'satvision'
   DECODER: 'fcn'
@@ -32,8 +32,8 @@ DATA:
   IMG_SIZE: 128 
 TRAIN:
   USE_CHECKPOINT: True
-  EPOCHS: 40
-  WARMUP_EPOCHS: 4
+  EPOCHS: 30
+  WARMUP_EPOCHS: 3
   BASE_LR: 1e-3 
   MIN_LR: 2e-4
   WARMUP_LR: 1e-4
@@ -49,4 +49,4 @@ PRECISION: "bf16"
 PRINT_FREQ: 10 
 SAVE_FREQ: 1
 VALIDATION_FREQ: 10
-TAG: multitask_mlp32
+TAG: multitask_unets

@@ -2,7 +2,7 @@ PIPELINE: 'PhasePred'
 DATAMODULE: null
 MODEL:
   PREPROCESSOR:
-    NAME: 'conv' # acceptable is mlp or conv
+    NAME: 'identity' # acceptable is mlp or conv, anything else = no preprocessor
     HIDDEN_DIMS: [16,16]
     CONV_KERNEL_SIZE: 3
   ENCODER: 'satvision'
@@ -13,10 +13,10 @@ MODEL:
   FREEZE_ALL: True
   FREEZE_LAYER: 3 
   LORA: True
-  LORA_RANK: 64
+  LORA_RANK: 32
   VPT: False
   NUM_PROMPTS: 200
-  IN_CHANS: 16
+  IN_CHANS: 14 # This is set to 14 in this config, will use the 14 modis-similar bands
   DROP_PATH_RATE: 0.1
   SWINV2:
     IN_CHANS: 14
@@ -44,9 +44,9 @@ TRAIN:
     GAMMA: 0.1
     MULTISTEPS: [700,]
 LOSS:
-  NAME: 'CEDice'
+  NAME: 'ce'
 PRECISION: "bf16"
 PRINT_FREQ: 10 
 SAVE_FREQ: 1
 VALIDATION_FREQ: 10
-TAG: PP_LoRA_CEDice
+TAG: PP_LoRA_rk32_14bands
