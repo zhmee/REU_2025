@@ -54,10 +54,7 @@ class PGMLDataModule(pl.LightningDataModule):
         self.test_data_path = test_data_path  # test OR predict
         self.batch_size = batch_size
         self.val_split = val_split
-        self.y_truth = torch.empty(1)  # not sure if this is pythonic
-
-
-    # def prepare_data(self):  # lightning recommended method: not useful for pgml
+        self.y_truth = torch.empty(1)  
 
 
     def setup(self, stage: str):
