@@ -1,0 +1,29 @@
+run_id:    ### MUST BE UNIQUE FOR EACH RUN ### Format: usernameDate_RunName
+pred_ckpt:  # only use if doing inference
+resume_ckpt:
+mdl_key:
+
+data:  # shouldn't be deleting any of these
+  train_data_path:  # must include '/' at end
+  test_data_path:
+  batch_size:   #e.g. 4096
+  val_split:     # good to use 0.1
+
+fit:
+  max_epochs:
+  n_nodes:
+  n_devices:
+  patience:
+  ckpt_freq:
+
+model:
+  input_size:
+  num_classes:
+  num_layers:
+  hidden_layers:  #[512, 448, 394, 192, 128, 64, 32, 16]
+  lr:
+  lr_step:
+  lr_gam:
+  activation:
+  penalty:
+  dropout:
