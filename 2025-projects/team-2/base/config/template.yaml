@@ -1,0 +1,29 @@
+run_id: ''   ### MUST BE UNIQUE FOR EACH RUN ### Format: usernameDate_RunName
+pred_ckpt: ''  # Only use while doing inference on the test set
+resume_ckpt: ''
+mdl_key: ''
+
+data: 
+  train_data_path: '/umbc/rs/cybertrn/reu2025/team2/research/base/pp2/data/^^DATA_NAME^^/train/'  # must include '/' at end
+  test_data_path: '/umbc/rs/cybertrn/reu2025/team2/research/base/pp2/data/^^DATA_NAME^^/test/'
+  batch_size:    #e.g. 4096
+  val_split:     # good to use 0.1
+
+fit:  
+  max_epochs:
+  n_nodes:      # Usually 1
+  n_devices:      # Num of GPUs
+  patience:
+  ckpt_freq:
+
+model:
+  indim: 15
+  outdim: 13
+  num_layers:
+  neurons:
+  lr:
+  lr_step:
+  lr_gam:
+  dropout:
+  activation:
+  optimizer:
