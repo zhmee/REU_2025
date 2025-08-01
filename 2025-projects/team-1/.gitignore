@@ -10,4 +10,20 @@ __pycache__/
 **/*.pt
 **/*.png
 # please
+/Finetune/pytorchcaney/.virtual_documents/
+/Finetune/pytorchcaney/Visuals_For_Slides.ipynb
+/Finetune/pytorchcaney/jobs/
+/Finetune/pytorchcaney/jupyter.slurm
+ABI_Data
+ABI_Data_Scaled
+Cloud_Mask/Mask_with_sklearn.ipynb
+Cloud_Phase/Phase_with_mlp.ipynb
+Cloud_Phase/Phase_with_sklearn.ipynb
+Model3.ipynb
+MultiTask/Multitask_data_processor_scaled.ipynb
+MultiTask/V1(outdated).ipynb
+MultiTask/V3.1_scaled.ipynb
+MultiTask/V3.2.ipynb
+MultiTask/V3.3.ipynb
+Untitled.ipynb
 2025-projects/team-1/Finetune/pytorchcaney/old/ 
