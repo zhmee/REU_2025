@@ -50,10 +50,39 @@ class RegressionHead(nn.Module):
         super().__init__()
         output_shape = (128,128)
         self.head = nn.Sequential(
-            nn.Conv2d(64, 1, kernel_size=3, padding=1), 
+            nn.Conv2d(64, 1, kernel_size=3, padding=1),
             nn.Dropout(head_dropout),
             nn.Upsample(size=output_shape, mode='bilinear', align_corners=False)  # Upsample to output shape
         )
     def forward(self,x):
         #print("x shape before fwd in regression head", x.shape)
         return self.head(x)
+
+
+@ModelFactory.head("experiment_regression_head")
+class ExperimentRegressionHead(nn.Module):
+    def __init__(self, decoder_channels=64, output_dim=1, head_dropout=0.1):
+        super().__init__()
+        output_shape = (128, 128)
+
+        self.head = nn.Sequential(
+            nn.Conv2d(decoder_channels, 32, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm2d(32),
+
+            nn.Conv2d(32, 16, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm2d(16),
+
+            nn.Dropout(head_dropout),
+
+            nn.Conv2d(16, output_dim, kernel_size=1),  # Final output layer
+            nn.Upsample(size=output_shape, mode='bilinear', align_corners=False)
+        )
+
+    def forward(self, x):
+        return self.head(x)
+
+
+
+    

@@ -53,15 +53,19 @@ def main(config, output_dir):
             save_dir=log_path,
             name=""  # For instance, logs will go to Logs/PhasePred/config_tag/11111
             ) 
-
-    if config.PIPELINE == "PhasePred" or config.PIPELINE == "CloudMask":
+    if config.PIPELINE == "multitask2":
+        monitor = "val_phase_iou"
+        mode = "max"
+    elif config.PIPELINE == "PhasePred" or config.PIPELINE == "CloudMask":
         monitor = "val_iou"
+        mode = "max"
     else:
         monitor = "val_loss"
+        mode = "min"
+
     
     checkpoint_callback = ModelCheckpoint(
-        monitor=monitor,
-        mode="max",
+        monitor=None,#monitor, #mode=mode,
         save_top_k=1,
         filename="best-miou-checkpoint",
         verbose=True,
@@ -94,7 +98,6 @@ def main(config, output_dir):
         trainer.limit_train_batches = get_distributed_train_batches(
             config, trainer)
 
-    #npz_paths = sorted(glob.glob("/umbc/rs/nasa-access/users/xingyan/pytorch-caney/data/downstream_2dcloud_scaled/*.npz"))
     # NEW : TESTING ENVIRONMENTAL VARIABLE FOR DOWNSTREAM CLOUD DATA PATH  #
     CLOUD_ROOT = Path(os.environ.get("DS_2D_CLOUD_ROOT",""))
     if not CLOUD_ROOT.is_dir():

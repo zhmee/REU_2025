@@ -1,5 +1,6 @@
 # slurm files 
 *.slurm
+*.slurm~
 
 #Env
 envs/
@@ -8,3 +9,5 @@ envs/
 *.out
 *.err
 tmp/
+**/.ipynb_checkpoints
+ABI_Data*/

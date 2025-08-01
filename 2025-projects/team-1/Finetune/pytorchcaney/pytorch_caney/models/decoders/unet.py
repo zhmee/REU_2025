@@ -56,9 +56,9 @@ class SwinUNet(nn.Module):
         x3 = self.decoder4(x4, feats[2])  # 8x8
         x2 = self.decoder3(x3, feats[1])  # 16x16
         x1 = self.decoder2(x2, feats[0])  # 32x32
-        x0 = self.decoder1(x1, None)  # 64x64 (optional 2nd use of 32x32 skip)
+        x0 = self.decoder1(x1, None)  # 64x64 
         out = self.final_up(x0)           # 
-        print("Shape after final up", out.shape)
+        #print("Shape after final up", out.shape)
         #out = self.head(out)
 
         return out

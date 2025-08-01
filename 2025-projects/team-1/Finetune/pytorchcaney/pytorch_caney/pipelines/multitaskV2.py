@@ -33,6 +33,7 @@ class DiceLoss(nn.Module):
     def __init__(self, smooth=1.0):
         super().__init__()
         self.smooth = smooth
+    
     def forward(self, logits, targets):
         num_classes = logits.shape[1]
         targets_one_hot = F.one_hot(targets, num_classes).permute(0, 3,1, 2).float()
@@ -41,7 +42,7 @@ class DiceLoss(nn.Module):
         intersection = torch.sum(probs * targets_one_hot, dims)
         cardinality = torch.sum(probs + targets_one_hot, dims)
         dice_score = (2. * intersection + self.smooth) / (cardinality + self.smooth)
-    return 1. - dice_score.mean()
+        return 1. - dice_score.mean()
 
 
 class FocalLoss(nn.Module):
@@ -56,7 +57,6 @@ class FocalLoss(nn.Module):
         pt = torch.exp(-ce_loss)
         focal_loss = ((1 - pt) ** self.gamma) * ce_loss
         return focal_loss.mean()
-
 
 
 # LoRA Class    #
@@ -105,27 +105,20 @@ class LoRALinear(nn.Module):
             return self.weight # Resolve via property
         return super().__getattr__(name)
 
-    # ------
-    # LoRA Helper
-    # ------
+    
     @staticmethod
-    def _recursively_replace_lora(module, target_layer_names=['qkv'], rank=4, alpha=16, dropout=0.0):
+    def _new_recursively_replace_lora(model, target_module_paths=['attn.proj', 'attn.qkv'], rank=4, alpha=16, dropout=0.0):
         """
-        Recursively go through the model, replace layers named `target_layer_name`
-        with LoRALinear wrapped layers.
+        Replace specific nn.Linear layers in the model by matching full module paths like 'attn.proj'
         """
-        for name, child in module.named_children():
-            # If this child has the target layer name, replace it
-            if name in target_layer_names and isinstance(child, nn.Linear):
-                in_dim = child.in_features
-                out_dim = child.out_features
-                # Wrap the original layer with LoRA
-                lora_layer = LoRALinear(in_dim, out_dim, child, rank=rank, alpha=alpha, dropout=dropout)
-                setattr(module, name, lora_layer) # this replaces the module with the created lora layer
-                #print(f"Replaced layer '{name}' in \n{module}\n with LoRA")
-            else:
-                # Recursively check child modules
-                LoRALinear._recursively_replace_lora(child, target_layer_names, rank, alpha, dropout)
+        for name, module in model.named_modules():
+            if any(name.endswith(target) for target in target_module_paths) and isinstance(module, nn.Linear):
+                parent_name = ".".join(name.split(".")[:-1])
+                attr_name = name.split(".")[-1]
+                parent = model.get_submodule(parent_name)
+                lora_layer = LoRALinear(module.in_features, module.out_features, module, rank, alpha, dropout)
+                setattr(parent, attr_name, lora_layer)
+                print(f"Replaced {name} with LoRA.")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # seems like Swin v2 code doesn't actually call this but we'll leave here for now
@@ -198,28 +191,29 @@ class CloudMultiTask2(pl.LightningModule):
             config=self.config)
 
         # Freeze up to MODEL.FREEZE_LAYER
+        self._freeze(self.config.MODEL.FREEZE_LAYER)
+
+        # Freeze all parameters (except VPT prompts) 
         if self.config.MODEL.FREEZE_ALL:
             for param in self.encoder.parameters():
                 param.requires_grad = False
-        self._freeze(self.config.MODEL.FREEZE_LAYER)
+        # Unfreeze the prompt embeddings
+        if self.config.MODEL.VPT:
+            self.encoder.model.prompt_embeddings.requires_grad = True
 
+        # Enable LoRA
         if self.config.MODEL.LORA:
-            # Config only sets if lora is used or not, must edit target_layer_names, rank, alpha, etc for now
-            LoRALinear._recursively_replace_lora(self.encoder, target_layer_names='qkv', rank=self.config.MODEL.LORA_RANK, alpha=16, dropout=0.0)
-        
+            # Config only sets if lora is used or not and rank, must edit target_layer_names, alpha, etc for now
+            LoRALinear._new_recursively_replace_lora(self.encoder,
+                    target_module_paths=['qkv','attn.proj'],
+                    rank=self.config.MODEL.LORA_RANK,
+                    alpha=2*self.config.MODEL.LORA_RANK,
+                    dropout=0.0)
+        print(f"LoRA dropout = 0.0")
 
-        #TODO Can set these in config
-        # mask phase cod cps
-        self.m_out_chans = 64
-        self.p_out_chans = 64
-        self.cod_out_chans = 14
-        self.cps_out_chans = 14
-
-
-        ## Setup unet decoders
+        # Set up unet decoders
         self.unet = SwinUNet(self.encoder.model)
-        
-        # Setup heads
+        # Set up heads 
         self.mask_head = nn.Conv2d(64, 2, kernel_size=1)
         self.phase_head = nn.Conv2d(64 + 2, 5, kernel_size=1)  # +1 to include mask logits as input
         self.cod_head = nn.Conv2d(64 + 2, 1, kernel_size=1)
@@ -239,13 +233,12 @@ class CloudMultiTask2(pl.LightningModule):
         phaseweights = 1.0 / phasecounts
         phaseweights = phaseweights / phaseweights.sum() * len(phasecounts)  # Normalize: mean weight ≈ 1.0
 
-        self.mask_loss = FocalLoss(alpha=maskweights,gamma=2)
-
+        self.mask_loss = FocalLoss(alpha=maskweights,gamma=0)
+        #self.mask_loss = nn.CrossEntropyLoss(weight=maskweights)
         self.dice_loss = DiceLoss()
-        self.dice_weight = .25
-        self.ce_loss = nn.CrossEntropyLoss(weight=weights)
+        self.dice_weight = self.config.LOSS.DICE_WEIGHT
 
-
+        self.ce_loss = nn.CrossEntropyLoss(weight=phaseweights)
 
         self.cod_loss = nn.MSELoss()
         self.cps_loss = nn.MSELoss()
@@ -253,21 +246,22 @@ class CloudMultiTask2(pl.LightningModule):
         num_tasks = 4
         self.log_vars = nn.Parameter(torch.zeros(num_tasks)) # for uncertainty weighting
 
-        self.losses = [self.mask_loss,
-                self.phase_loss,
-                self.cod_loss,
-                self.cps_loss]
+        ##self.losses = [self.mask_loss,
+        #        self.phase_loss,
+        #        self.cod_loss,
+        #        self.cps_loss]
 
         # Was using this to  set up the loss weights, commented out because we don't need that for uncertainty weighting!
-        self.mask_weight = torch.nn.Parameter(torch.tensor(1.0))  # Initialize to 10
-        self.phase_weight = torch.nn.Parameter(torch.tensor(1.0))  # Initialize to 5
-        self.cps_weight = torch.nn.Parameter(torch.tensor(.01))  # Initialize to 1
-        self.cod_weight = torch.nn.Parameter(torch.tensor(.01))  # Initialize to 1
+        #self.mask_weight = torch.nn.Parameter(torch.tensor(1.0))  # Initialize to 10
+        #self.phase_weight = torch.nn.Parameter(torch.tensor(1.0))  # Initialize to 5
+        #self.cps_weight = torch.nn.Parameter(torch.tensor(.01))  # Initialize to 1
+        #self.cod_weight = torch.nn.Parameter(torch.tensor(.01))  # Initialize to 1
         ## Comment out this code and uncomment above to make loss weights trainable
-        #self.mask_weight = torch.tensor(1.0)
-        #self.phase_weight = torch.tensor(1.0)
-        #self.cps_weight = torch.tensor(0.01)
-        #self.cod_weight = torch.tensor(0.01)
+
+        self.mask_weight = self.config.LOSS.MASK_WEIGHT
+        self.phase_weight = self.config.LOSS.PHASE_WEIGHT
+        self.cps_weight = self.config.LOSS.CPS_WEIGHT
+        self.cod_weight = self.config.LOSS.COD_WEIGHT
 
     # This will be called to get loss during training, if using uncertainty weighting.
     def _calculate_total_uncertainty_loss(self, task_losses: list[torch.Tensor]):
@@ -311,6 +305,8 @@ class CloudMultiTask2(pl.LightningModule):
         self.val_cm_iou_avg = torchmetrics.MeanMetric()
         self.test_cm_iou_avg = torchmetrics.MeanMetric()
 
+        self.mse_cod = torchmetrics.MeanMetric()
+        self.mse_cps = torchmetrics.MeanMetric()
         self.r2_score_cod = R2Score()
         self.r2_score_cps = R2Score()
 
@@ -491,12 +487,6 @@ class CloudMultiTask2(pl.LightningModule):
         self.log('train_mask_iou', self.train_cm_iou_avg.compute(),on_step=False, on_epoch=True, prog_bar=False)
         self.log('train_phase_iou', self.train_pp_iou_avg.compute(),on_step=False, on_epoch=True, prog_bar=False)
 
-
-        #self.log('mask loss weight', self.mask_weight,on_step=False, on_epoch=True)
-        #self.log('phase loss weight', self.phase_weight, on_step=False, on_epoch = True)
-        #self.log('cps loss weight', self.cps_weight, on_step = False, on_epoch = True)
-        #self.log('cod loss weight', self.cod_weight, on_step = False, on_epoch = True)
-
         return total_loss
 
     def validation_step(self, batch, batch_idx):
@@ -564,6 +554,7 @@ class CloudMultiTask2(pl.LightningModule):
     def test_step(self, batch, batch_idx):
 
         inputs, targets = batch
+        #print(f"Test sample {batch_idx} from: {paths}")
 
         outputs = self.forward(inputs)  
         
@@ -628,6 +619,7 @@ class CloudMultiTask2(pl.LightningModule):
         preds_flat_cod = preds_cod.view(preds_cod.size(0), -1)
         targets_flat_cod = targets_cod.view(targets_cod.size(0), -1)
         self.r2_score_cod.update(preds_flat_cod, targets_flat_cod)
+        self.mse_cod.update(cod_loss)
 
         # cps
         preds_cps = outputs['cps_output']
@@ -636,7 +628,8 @@ class CloudMultiTask2(pl.LightningModule):
         preds_flat_cps = preds_cps.view(preds_cps.size(0), -1)
         targets_flat_cps = targets_cps.view(targets_cps.size(0), -1)
         self.r2_score_cps.update(preds_flat_cps, targets_flat_cps)
-
+        self.mse_cps.update(cps_loss)
+    
         # Update loss avg and log iou
         self.test_loss_avg.update(total_loss)
         self.log('test_mask_iou', self.test_cm_iou_avg.compute(),on_step=False, on_epoch=True, prog_bar=True)
@@ -665,6 +658,9 @@ class CloudMultiTask2(pl.LightningModule):
         print("====== CLASSIFICATION REPORT: CLOUD MASK =====")
         print(report_mask)
 
+
+        self.log("mse_cod", self.mse_cod.compute(), prog_bar=True)
+        self.log("mse_cps", self.mse_cps.compute(), prog_bar=True)
         self.log("test_r2_cod", self.r2_score_cod.compute(), prog_bar=True)
         self.log("test_r2_cps", self.r2_score_cps.compute(), prog_bar=True)
 
@@ -681,33 +677,34 @@ class CloudMultiTask2(pl.LightningModule):
         tick_vals = [c[0] for c in mask_spec]
         tick_labels = [c[2] for c in mask_spec]
 
-        for i in range(min(3, mask_preds.size(0))):  # visualize 2 examples max
+        for i in range(min(4, mask_preds.size(0))):  # visualize 2 examples max
             pred_mask = mask_preds[i]
             truth_mask = mask_targets[i]
 
-            fig, axs = plt.subplots(1,2, figsize=(10,4))
+            fig, axs = plt.subplots(1,2, figsize=(7,5))
 
-            im0 = axs[0].imshow(pred_mask, cmap=cmap_mask,vmin=-0.5,vmax=5.5)
+            im0 = axs[0].imshow(pred_mask, cmap=cmap_mask,vmin=-0.5,vmax=1.5)
             axs[0].set_title("Prediction")
             axs[0].axis("off")
 
-            im1 = axs[1].imshow(truth_mask, cmap=cmap_mask, vmin=-0.5, vmax=5.5)
+            im1 = axs[1].imshow(truth_mask, cmap=cmap_mask, vmin=-0.5, vmax=1.5)
             axs[1].set_title("Ground Truth")
             axs[1].axis("off")
 
-            cbar = fig.colorbar(im1, ax=axs.ravel().tolist(), ticks=tick_vals, shrink=0.8,fraction=0.046, pad=0.04)
+            cbar = fig.colorbar(im1, ax=axs.ravel().tolist(), ticks=tick_vals,orientation="horizontal",shrink=0.8,fraction=0.046, pad=0.04)
             cbar.set_ticks(tick_vals)
-            cbar.ax.set_yticklabels(tick_labels, fontsize=8)
+            cbar.ax.set_xticklabels(tick_labels, fontsize=8)
 
-            fig.suptitle(f"Epoch {self.current_epoch} | Batch {batch_idx} | Sample {i}", fontsize=12)
+            fig.suptitle(f"Cloud Mask Predictions", fontsize=12)
             #plt.tight_layout()
 
                 # get job id, or if running locally outputs "unknown job"
             job_id = os.environ.get("SLURM_JOB_ID", "unknown_job")
             save_dir = os.path.join("MultitaskVisuals",f"job_{job_id}","CloudMask")
             os.makedirs(save_dir, exist_ok=True)
-
-            plt.savefig(os.path.join(save_dir, f"epoch{self.current_epoch}_batch{batch_idx}_example{i}.png"))
+            
+            fig.subplots_adjust(wspace=0.05, left=0.05, right=0.95, bottom=0.2)
+            plt.savefig(os.path.join(save_dir, f"example{i}.png"))
             plt.close()
 
         ##### CLOUD PHASE
@@ -720,14 +717,14 @@ class CloudMultiTask2(pl.LightningModule):
             ]
 
         cmap_phase = plt.cm.colors.ListedColormap([c[1] for c in phase_spec])
-        tick_vals = [c[0] for c in phase_spec] 
-        tick_labels = [c[2] for c in phase_spec]
+        tick_vals_p = [c[0] for c in phase_spec] 
+        tick_labels_p = [c[2] for c in phase_spec]
 
-        for i in range(min(3, phase_preds.size(0))):  # visualize 2 examples max
+        for i in range(min(4, phase_preds.size(0))):  # visualize 2 examples max
             pred_mask = phase_preds[i]
             truth_mask = phase_targets[i]
 
-            fig, axs = plt.subplots(1,2, figsize=(10,4))
+            fig, axs = plt.subplots(1,2, figsize=(7,5))
 
             im0 = axs[0].imshow(pred_mask, cmap=cmap_phase,vmin=-0.5,vmax=4.5)
             axs[0].set_title("Prediction")
@@ -737,12 +734,12 @@ class CloudMultiTask2(pl.LightningModule):
             axs[1].set_title("Ground Truth")
             axs[1].axis("off")
 
-            cbar = fig.colorbar(im1, ax=axs.ravel().tolist(), orientation='vertical',
-                        ticks=tick_vals, fraction=0.1, pad=0.1)
-            cbar.set_ticks(tick_vals)
-            cbar.ax.set_yticklabels(tick_labels, fontsize=8)
+            cbar = fig.colorbar(im1, ax=axs.ravel().tolist(), orientation='horizontal',
+                        fraction=0.075, pad=0.15)
+            cbar.set_ticks(tick_vals_p)
+            cbar.ax.set_xticklabels(tick_labels_p, fontsize=8)
 
-            fig.suptitle(f"Test Predictions Sample {i}", fontsize=12)
+            fig.suptitle(f"Test Predictions Sample {i}", fontsize=12, y=.96)
             #plt.tight_layout()
 
             # get job id, or if running locally outputs "unknown job"
@@ -750,6 +747,7 @@ class CloudMultiTask2(pl.LightningModule):
             save_dir = os.path.join("MultitaskVisuals",f"job_{job_id}","CloudPhase")
             os.makedirs(save_dir, exist_ok=True)
 
+            fig.subplots_adjust(wspace=0.05, left=0.05, right=0.95, bottom=0.2)
             plt.savefig(os.path.join(save_dir, f"example{i}.png"))
             plt.close()
 

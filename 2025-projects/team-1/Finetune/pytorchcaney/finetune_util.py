@@ -78,7 +78,7 @@ class CloudDataset(Dataset):
                 print("Infs in inputs after transform")
             data.close()
         inputs = inputs.permute(2,0,1)
-        return inputs, label
+        return inputs, label#, str(path)
 
 
 class InputConv(nn.Module):

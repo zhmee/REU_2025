@@ -100,6 +100,13 @@ _C.MODEL.SWINV2.NORM_STAGE = False
 _C.LOSS = CN()
 _C.LOSS.NAME = 'tversky'
 _C.LOSS.MODE = 'multiclass'
+
+_C.LOSS.DICE_WEIGHT = 0.0
+_C.LOSS.MASK_WEIGHT = 2.0
+_C.LOSS.PHASE_WEIGHT = 1.0
+_C.LOSS.COD_WEIGHT = 0.01
+_C.LOSS.CPS_WEIGHT = 0.01
+
 _C.LOSS.CLASSES = None
 _C.LOSS.LOG = False
 _C.LOSS.LOGITS = True
@@ -141,7 +148,7 @@ _C.TRAIN.USE_CHECKPOINT = False
 _C.TRAIN.LR_SCHEDULER = CN()
 _C.TRAIN.LR_SCHEDULER.NAME = 'cosine'
 # Epoch interval to decay LR, used in StepLRScheduler
-_C.TRAIN.LR_SCHEDULER.DECAY_EPOCHS = 30
+_C.TRAIN.LR_SCHEDULER.DECAY_EPOCHS = 60
 # LR decay rate, used in StepLRScheduler
 _C.TRAIN.LR_SCHEDULER.DECAY_RATE = 0.1
 # Gamma / Multi steps value, used in MultiStepLRScheduler

@@ -30,3 +30,5 @@ old/
 
 # other ----
 slurm_logs/
+*.csv
+*Visuals/
