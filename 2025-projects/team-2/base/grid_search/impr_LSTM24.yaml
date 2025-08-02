@@ -1,0 +1,37 @@
+# shouldn't be deleting any of these                                                                                               run_id: 'jh8.1_lstm24_b_v2'                                                                                                        #pred_ckpt: '/nfs/rs/cybertrn/reu2024/team2/base/logs/tb_logs/jh7.29_lstm24_ms/lightning_logs/version_1/checkpoints/epoch=2999-step=507000.ckpt'  # only change if doing inference
+pred_ckpt:
+resume_ckpt:   # leave as '' if not resuming
+mdl_key:
+
+data:  # shouldn't be deleting any of these
+  train_data_path:  # must include '/' at end
+  test_data_path:
+  batch_size:
+  val_split:
+
+fit:  # shouldn't be deleting any of these
+  max_epochs:
+  n_nodes:
+  n_devices:
+  patience:   # make arbitrarily large to turn off early stopping
+  ckpt_freq:
+
+model:  # should match the model you are using
+  indim:
+  outdim:
+  num_linears:
+  neurons_per_hidden: #this should also be an array, but it must divide the num_linears evenly
+  input_neurons:
+  num_lstm_layers:  #the number of lstm layers can be changed here
+  hidden_state_size:  #in the 2023
+  lr:
+  l2:
+  lr_step:
+  lr_gam:
+  dropout:
+  activation:
+  penalty:
+  optimizer:
+  one_activation:
+  custom_loss:
+  bias:
