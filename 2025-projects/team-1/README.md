@@ -1,4 +1,4 @@
-# REU 2025 Team 1 Documentation!
+# REU 2025 Team 1 Documentation
 **Authors** *: Danielle Murphy, Kevin Zhang, Caleb Parten, Autumn Sterling, Haoxiang Zhang*
 
 **Mentors** *: Jianwu Wang, RA: Xingyan Li In collaboration with Jie Gong, Jordan A. Caraballo-Vega, Mark L. Carroll*
