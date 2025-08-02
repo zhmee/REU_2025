@@ -1,0 +1,18 @@
+# ── slurm things ─────────────────────────────
+*.out
+*.err
+
+# ── data ───────────────────────────
+*.pt
+*.pth
+*.h5
+*.np[zy]
+*.tif
+data/
+logs/
+
+# ── cache ──────────────────────────────
+__pycache__/
+
+
+.jupyter_ystore.db

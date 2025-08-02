@@ -1,0 +1,18 @@
+{
+    "checkpoint": {
+        "save_optimizer_states": true,
+	"load_optimizer_states": true
+    },
+    "zero_optimization": {
+        "stage": 3,
+        "offload_optimizer": {
+            "device": "none"
+        },
+        "offload_param": {
+            "device": "none"
+        },
+        "stage3_gather_16bit_weights_on_model_save": true
+    },
+    "zero_allow_untested_optimizer": true
+}
+

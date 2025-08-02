@@ -1,0 +1,13 @@
+# slurm files 
+*.slurm
+*.slurm~
+
+#Env
+envs/
+
+#Other (Output, etc.)
+*.out
+*.err
+tmp/
+**/.ipynb_checkpoints
+ABI_Data*/
