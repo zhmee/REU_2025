@@ -14,3 +14,4 @@
 Both approaches will contain more specific documentation within their respective repositories : 
 - `/Finetune/pytorchcaney` contains finetuning code
 - `/Scratch_Models_Finalized` contains code from models from scratch
+- `/Data_Generation` contains directions for generating the dataset
